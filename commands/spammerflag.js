@@ -45,6 +45,8 @@ module.exports = {
   command: new MessageFlagBuilder()
     .addCheck(check),
   run: function(msg) {
-    msg.reply("Warning: spammer");
+    let id = this.settingsMgr.getServer(msg.channel.server_id).get("warningChannel");
+    let channel = msg.channel.server.channels.find(c => c._id == id);
+    channel.sendMessage("`" + msg.author.username + "` might be a spammer! " + msg.url);
   }
 }
