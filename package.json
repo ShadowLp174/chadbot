@@ -1,0 +1,7 @@
+{
+  "dependencies": {
+    "console-stamp": "^3.1.0",
+    "revolt.js": "^6.0.19",
+    "spam-detection": "^1.0.3"
+  }
+}
