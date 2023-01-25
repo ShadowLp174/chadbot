@@ -5,6 +5,8 @@ const path = require("path");
 const fs = require("fs");
 const { SettingsManager } = require("./settings/Settings.js");
 require('console-stamp')(console, '[HH:MM:ss.l]');
+const Uploader = require("revolt-uploader");
+const SpamClassifier = require("./spam/Classifier.js");
 
 let config;
 if (fs.existsSync("./config.json")) {
@@ -26,6 +28,13 @@ class Chad {
 
     this.settingsMgr = new SettingsManager();
     this.settingsMgr.loadDefaultsSync("./storage/defaults.json");
+
+    this.uploader = new Uploader(this.client);
+    this.classifier = new SpamClassifier("./spam/store.json");
+    let stored = require("./spam/store.json");
+    if (Object.keys(stored).length > 0) this.classifier.restore(stored);
+
+    this.checkQueue = [];
 
     this.client.on("ready", () => {
       console.log("Logged in as " + this.client.user.username);

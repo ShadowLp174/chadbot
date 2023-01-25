@@ -1,7 +1,11 @@
 {
   "dependencies": {
     "console-stamp": "^3.1.0",
+    "languagedetect": "^2.0.0",
+    "natural": "^6.1.4",
+    "revolt-uploader": "^1.1.0",
     "revolt.js": "^6.0.19",
-    "spam-detection": "^1.0.3"
+    "spam-detection": "^1.0.3",
+    "spam-detector": "^0.0.0"
   }
 }
