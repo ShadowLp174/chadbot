@@ -5,6 +5,7 @@ module.exports = {
     .setName("mark")
     .addAliases("m")
     .setDescription("Mark the first item in the queue as spam or ham.")
+    .addRequirement(e => e.addPermission("ManageServer"))
     .addChoiceOption((o) =>
       o.setName("type")
         .setDescription("Wether the message is spam or ham.")

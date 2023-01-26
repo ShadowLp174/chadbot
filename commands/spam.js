@@ -4,6 +4,7 @@ module.exports = {
   command: new CommandBuilder()
     .setName("spam")
     .setDescription("Add spam data to the dataset")
+    .addRequirement(e => e.addPermission("ManageServer"))
     .addTextOption(o =>
       o.setName("message")
         .setDescription("The spam message.")

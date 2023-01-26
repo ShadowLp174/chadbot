@@ -4,6 +4,7 @@ module.exports = {
   command: new CommandBuilder()
     .setName("train")
     .addAlias("t")
+    .addRequirement(e => e.addPermission("ManageServer"))
     .setDescription("Save the new classifications and train the model."),
   run: function(msg) {
     this.classifier.train();

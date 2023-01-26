@@ -4,6 +4,7 @@ module.exports = {
   command: new CommandBuilder()
     .setName("reviewqueue")
     .addAliases("rq")
+    .addRequirement(e => e.addPermission("ManageServer"))
     .setDescription("Display the messages that are in queue to be reviewed."),
   run: function(msg) {
     let list = "";
