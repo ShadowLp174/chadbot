@@ -9,6 +9,7 @@ class SpamClassifier extends EventEmitter {
   mentionRegex = /(?<mention>(<@[A-Z0-9]+>))/gi;
   mentionLength = 29;
   specialCharRegex = /(?<!\\)[^a-zA-Z\d\s:\/\\]/gi;
+  emojiRegex = /(?<emoji>(:[A-Z0-9]+:))/gi;
   codeRegex = /```(.*)```/gis;
 
   store = null;
@@ -65,9 +66,10 @@ class SpamClassifier extends EventEmitter {
     let stemmed = PorterStemmer.stem(string);
 
     stemmed = this.tokenizePattern(stemmed, this.mentionRegex, "\\@mentionedmention\\@", mentionLimit);
+    stemmed = this.tokenizePattern(stemmed, this.emojiRegex, "\\@emoji\\@");
     stemmed = this.tokenizePattern(stemmed, this.specialCharRegex, "%value").replace(/\\/g, "");
 
-    return stemmed.split(" ");
+    return stemmed.trim().split(" ");
   }
   addDocument(string, label, mentionCount) {
     return this.classifier.addDocument(this.tokenize(string, mentionCount), label);
@@ -86,6 +88,6 @@ class SpamClassifier extends EventEmitter {
 }
 
 /*let c = new SpamClassifier();
-console.log(c.tokenize("Hi, how ```\ndwadadawd\ndwadawd\n```are <@01GAX96NH5KMHCR3KW8PHMHSGA> you? <@01G9MCW5KZFKT2CRAD3G3B9JN5>dwad"))*/
+console.log(c.tokenize("Hi, how ```\ndwadadawd\ndwadawd\n```are <@01GAX96NH5KMHCR3KW8PHMHSGA> you? <@01G9MCW5KZFKT2CRAD3G3B9JN5>dwad :01G81KSS4CMV69XJQ65C1AKX61:"))*/
 
 module.exports = SpamClassifier;

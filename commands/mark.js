@@ -8,10 +8,14 @@ module.exports = {
     .addRequirement(e => e.addPermission("ManageServer"))
     .addChoiceOption((o) =>
       o.setName("type")
-        .setDescription("Wether the message is spam or ham.")
-        .addChoices("s", "h")
+        .setDescription("Wether the message is spam or ham. Use 'x' to dismiss a message.")
+        .addChoices("s", "h", "x")
         .setRequired(true)),
   run: function(msg, data) {
+    if (data.get("type").value == "x") {
+      this.checkQueue.shift();
+      return msg.reply(this.em("Message dismissed!"));
+    }
     let type = (data.get("type").value == "s") ? "spam" : "ham";
     let item = this.checkQueue.shift();
     this.classifier.addDocument(item.content, type);
