@@ -8,7 +8,7 @@ class SpamClassifier extends EventEmitter {
   classifier = new BayesClassifier();
   mentionRegex = /(?<mention>(<@[A-Z0-9]+>))/gi;
   mentionLength = 29;
-  specialCharRegex = /[^a-zA-Z\d\s:\/]/gi;
+  specialCharRegex = /(?<!\\)[^a-zA-Z\d\s:\/\\]/gi;
   codeRegex = /```(.*)```/gis;
 
   store = null;
@@ -40,39 +40,33 @@ class SpamClassifier extends EventEmitter {
   replaceAt(string, substr, index, length) {
     return string.slice(0, index) + substr + string.slice(index + length);
   }
+  tokenizePattern(string, pattern, tokenized, matchLimit=Number.POSITIVE_INFINITY) {
+    let matches = string.matchAll(pattern);
+    let result = matches.next();
+    let indexOffset = 0;
+    for (let i = 0; !result.done; i++) {
+      if (matchLimit != Infinity && i >= matchLimit) break;
+
+      let lws = (result.value.input.charAt(result.value.index - 1) == " ") ? "" : " ";
+      let rws = (result.value.input.charAt(result.value.index + result.value[0].length) == " ") ? "" : " ";
+      let subs = lws + tokenized.replace(/\%value/g, result.value[0]) + rws;
+
+      string = this.replaceAt(string, subs, result.value.index + indexOffset, result.value[0].length);
+      indexOffset += subs.length - result.value[0].length;
+      result = matches.next();
+    }
+    return string;
+  }
   tokenize(string, mentionLimit=Number.POSITIVE_INFINITY) {
     string = string.trim();
     string = string.replace(this.codeRegex, "");
+    string = string.replace(/\\/g, "");
 
     let stemmed = PorterStemmer.stem(string);
 
-    let mentions = stemmed.matchAll(this.mentionRegex);
-    let result = mentions.next();
-    let indexOffset = 0;
-    for (let i = 0; !result.done; i++) {
-      if (mentionLimit != Infinity && i >= mentionLimit) break;
+    stemmed = this.tokenizePattern(stemmed, this.mentionRegex, "\\@mentionedmention\\@", mentionLimit);
+    stemmed = this.tokenizePattern(stemmed, this.specialCharRegex, "%value").replace(/\\/g, "");
 
-      let lws = (result.value.input.charAt(result.value.index - 1) == " ") ? "" : " ";
-      let rws = (result.value.input.charAt(result.value.index + result.value[0].length) == " ") ? "" : " ";
-      let subs = lws + "mentionedmention" + rws;
-
-      stemmed = this.replaceAt(stemmed, subs, result.value.index + indexOffset, result.value[0].length);
-      indexOffset += subs.length - result.value[0].length;
-      result = mentions.next();
-    }
-
-    let chars = stemmed.matchAll(this.specialCharRegex);
-    indexOffset = 0;
-    result = chars.next();
-    for (let i = 0; !result.done; i++) {
-      let lws = (result.value.input.charAt(result.value.index - 1) == " ") ? "" : " ";
-      let rws = (result.value.input.charAt(result.value.index + result.value[0].length) == " ") ? "" : " ";
-      let subs = lws + result.value[0] + rws;
-
-      stemmed = this.replaceAt(stemmed, subs, result.value.index + indexOffset, result.value[0].length);
-      indexOffset += subs.length - result.value[0].length;
-      result = chars.next();
-    }
     return stemmed.split(" ");
   }
   addDocument(string, label, mentionCount) {
