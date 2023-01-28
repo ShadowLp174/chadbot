@@ -58,7 +58,7 @@ class SpamClassifier extends EventEmitter {
     }
     return string;
   }
-  tokenize(string, mentionLimit=Number.POSITIVE_INFINITY) {
+  tokenize(string, mentionLimit=Number.POSITIVE_INFINITY) { // TODO: add more context (through replies for example)
     string = string.trim();
     string = string.replace(this.codeRegex, "");
     string = string.replace(/\\/g, "");

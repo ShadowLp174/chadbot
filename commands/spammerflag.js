@@ -70,20 +70,29 @@ function check(msg) { // TODO: include if user is a potential spammer
     this.mentions.set(msg.author_id, mentions);
   }
   //if (spamcheck.detect(msg.content) == "spam") filter.push(true, true);
-  let isSpam = this.classifier.getClassifications(msg.content);
+  let isSpam = this.classifier.getClassifications(this.classifier.tokenize(msg.content));
   let diff = Math.abs(isSpam[0].value - isSpam[1].value);
-  //console.log(isSpam, diff);
-  if (diff < 0.2) {
+  console.log(isSpam, diff);
+  if (diff < 0.01) {
     // seek assistance;
     let logChannel = msg.channel.server.channels.find(c => c._id == this.settingsMgr.getServer(msg.channel.server_id).get("warningChannel"));
     let m = msg.content.split("\n").map(e => "> " + e).join("\n");
     let embed = this.em("Is this message spam? \n" + m);
     //embed.embeds[0].url = msg.url;
-    logChannel.sendMessage(embed);
-    this.checkQueue.push({
+    logChannel.sendMessage(embed).then(ms => {
+      console.log("message", ms.reactions)
+      ms.reactions.observe((...args) => {
+        console.log("reaction", args)
+      }, true);
+    });
+    this.checkQueue.unshift({
       msg: msg.url,
       content: msg.content
     });
+  } else {
+    if (isSpam[0].label == "spam") {
+      filter.push(true, true);
+    }
   }
 
   const score = filter.filter(e => e).length / ol;
