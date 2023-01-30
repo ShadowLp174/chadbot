@@ -3,6 +3,7 @@ const BayesClassifier = natural.BayesClassifier;
 const PorterStemmer = natural.PorterStemmer;
 const EventEmitter = require("stream");
 const fs = require("fs");
+const isSpam = require("spam-detector");
 
 class SpamClassifier extends EventEmitter {
   classifier = new BayesClassifier();
@@ -11,6 +12,7 @@ class SpamClassifier extends EventEmitter {
   specialCharRegex = /(?<!\\)[^a-zA-Z\d\s:\/\\]/gi;
   emojiRegex = /(?<emoji>(:[A-Z0-9]+:))/gi;
   codeRegex = /```(.*)```/gis;
+  urlRegex = /(https?:\/\/[^\s]+)/gi;
 
   store = null;
   scheduledSave = null;
@@ -41,12 +43,16 @@ class SpamClassifier extends EventEmitter {
   replaceAt(string, substr, index, length) {
     return string.slice(0, index) + substr + string.slice(index + length);
   }
-  tokenizePattern(string, pattern, tokenized, matchLimit=Number.POSITIVE_INFINITY) {
+  async tokenizePattern(string, pattern, tokenized, matchLimit=Number.POSITIVE_INFINITY) {
     let matches = string.matchAll(pattern);
     let result = matches.next();
     let indexOffset = 0;
     for (let i = 0; !result.done; i++) {
       if (matchLimit != Infinity && i >= matchLimit) break;
+
+      if (typeof tokenized == "function") {
+        tokenized = await tokenized(result.value[0]);
+      }
 
       let lws = (result.value.input.charAt(result.value.index - 1) == " ") ? "" : " ";
       let rws = (result.value.input.charAt(result.value.index + result.value[0].length) == " ") ? "" : " ";
@@ -58,21 +64,35 @@ class SpamClassifier extends EventEmitter {
     }
     return string;
   }
-  tokenize(string, mentionLimit=Number.POSITIVE_INFINITY) { // TODO: add more context (through replies for example)
+  async tokenize(string, mentionLimit=Number.POSITIVE_INFINITY) { // TODO: add more context (through replies for example)
     string = string.trim();
     string = string.replace(this.codeRegex, "");
     string = string.replace(/\\/g, "");
 
     let stemmed = PorterStemmer.stem(string);
 
-    stemmed = this.tokenizePattern(stemmed, this.mentionRegex, "\\@mentionedmention\\@", mentionLimit);
-    stemmed = this.tokenizePattern(stemmed, this.emojiRegex, "\\@emoji\\@");
-    stemmed = this.tokenizePattern(stemmed, this.specialCharRegex, "%value").replace(/\\/g, "");
+    stemmed = await this.tokenizePattern(stemmed, this.mentionRegex, "\\@mentionedmention\\@", mentionLimit);
+    stemmed = await this.tokenizePattern(stemmed, this.emojiRegex, "\\@emoji\\@");
+    /*stemmed = await this.tokenizePattern(stemmed, this.urlRegex, (match) => {
+      return new Promise(res => {
+        isSpam(match, (err, spam) => {
+          console.log(err);
+          if (err) return res("\\@errorurl\\@");
+          if (spam) {
+            return res("\\@goodurl\\@");
+          }
+          return res("\\@badurl\\@");
+        })
+      });
+    });
+    console.log(stemmed);*/
+    stemmed = await this.tokenizePattern(stemmed, this.urlRegex, "\\@url\\@");
+    stemmed = (await this.tokenizePattern(stemmed, this.specialCharRegex, "%value")).replace(/\\/g, "");
 
     return stemmed.trim().split(" ");
   }
-  addDocument(string, label, mentionCount) {
-    return this.classifier.addDocument(this.tokenize(string, mentionCount), label);
+  async addDocument(string, label, mentionCount) {
+    return this.classifier.addDocument(await this.tokenize(string, mentionCount), label);
   }
   classify(document) {
     return this.classifier.classify(document);

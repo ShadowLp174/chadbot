@@ -40,7 +40,7 @@ const reactionMap = {
   "01GR219PDEY3KSKPVQMKQV7RX4": "dismissed"
 }
 
-function check(msg) { // TODO: include if user is a potential spammer
+async function check(msg) { // TODO: include if user is a potential spammer
   if (msg.bot) return true;
   const filter = [
     !(msg.author.avatar), // has no pfp
@@ -76,10 +76,9 @@ function check(msg) { // TODO: include if user is a potential spammer
     this.mentions.set(msg.author_id, mentions);
   }
   //if (spamcheck.detect(msg.content) == "spam") filter.push(true, true);
-  let isSpam = this.classifier.getClassifications(this.classifier.tokenize(msg.content));
+  let isSpam = this.classifier.getClassifications(await this.classifier.tokenize(msg.content));
   let diff = Math.abs(isSpam[0].value - isSpam[1].value);
   console.log(isSpam, diff);
-  console.log(this.classifier.tokenize(msg.content), this.config.assistanceTreshold > diff);
   if (diff < this.config.assistanceTreshold) {
     // seek assistance;
     let logChannel = msg.channel.server.channels.find(c => c._id == this.settingsMgr.getServer(msg.channel.server_id).get("warningChannel"));
@@ -114,10 +113,10 @@ function check(msg) { // TODO: include if user is a potential spammer
         this.classifier.addDocument(msg.content, type);
       });
     });
-    this.checkQueue.unshift({
+    /*this.checkQueue.unshift({
       msg: msg.url,
       content: msg.content
-    });
+    });*/
   } else {
     if (isSpam[0].label == "spam") {
       filter.push(true, true);

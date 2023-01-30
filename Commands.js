@@ -247,9 +247,9 @@ class MessageFlagBuilder {
     this.critical = c;
     return this;
   }
-  validateMessage(msg, ctx) {
+  async validateMessage(msg, ctx) {
     for (let i = 0; i < this.checks.length; i++) {
-      if (this.checks[i].call(ctx, msg)) return true;
+      if (await this.checks[i].call(ctx, msg)) return true;
     }
     return false; // flag message
   }
@@ -298,7 +298,7 @@ class CommandHandler extends EventEmitter {
     if (!this.customPrefixes.has(guildId)) return this.prefix;
     return this.customPrefixes.get(guildId);
   }
-  messageHandler(msg) {
+  async messageHandler(msg) {
     if (msg.author_id == this.client.user._id) return; // don't react to own messages
     if (!msg || !msg.content) return;
     if (!this.cachedGuilds.includes(msg.channel.server_id)) {
@@ -315,7 +315,7 @@ class CommandHandler extends EventEmitter {
     }
 
     for (let i in this.generalFlags) {
-      if (!this.generalFlags[i].validateMessage(msg, this.request("context"))) {
+      if (!(await this.generalFlags[i].validateMessage(msg, this.request("context")))) {
         this.emit("flag", {
           flag: this.generalFlags[i],
           message: msg
