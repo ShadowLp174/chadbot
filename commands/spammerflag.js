@@ -34,6 +34,12 @@ let c = (classifications[0].value == classifications[1].value) ? "ham" : classif
 console.log(classifier.getClassifications(string), c);
 */  // messing around
 
+const reactionMap = {
+  "01GR218MFEJ77A3CQ1YKCM8BHX": "ham",
+  "01GR2196W026BEFPA4D62GX3Z3": "spam",
+  "01GR219PDEY3KSKPVQMKQV7RX4": "dismissed"
+}
+
 function check(msg) { // TODO: include if user is a potential spammer
   if (msg.bot) return true;
   const filter = [
@@ -73,17 +79,40 @@ function check(msg) { // TODO: include if user is a potential spammer
   let isSpam = this.classifier.getClassifications(this.classifier.tokenize(msg.content));
   let diff = Math.abs(isSpam[0].value - isSpam[1].value);
   console.log(isSpam, diff);
-  if (diff < 0.01) {
+  console.log(this.classifier.tokenize(msg.content), this.config.assistanceTreshold > diff);
+  if (diff < this.config.assistanceTreshold) {
     // seek assistance;
     let logChannel = msg.channel.server.channels.find(c => c._id == this.settingsMgr.getServer(msg.channel.server_id).get("warningChannel"));
-    let m = msg.content.split("\n").map(e => "> " + e).join("\n");
+    let m = (msg.content.slice(0, 1920) + "\n[...]").split("\n").map(e => "> " + e).join("\n");
     let embed = this.em("Is this message spam? \n" + m);
-    //embed.embeds[0].url = msg.url;
+    embed.interactions = {
+      restrict_reactions: true,
+      reactions: [ "01GR218MFEJ77A3CQ1YKCM8BHX", "01GR2196W026BEFPA4D62GX3Z3", "01GR219PDEY3KSKPVQMKQV7RX4" ]
+    }
+    var done = false;
     logChannel.sendMessage(embed).then(ms => {
-      console.log("message", ms.reactions)
-      ms.reactions.observe((...args) => {
-        console.log("reaction", args)
-      }, true);
+      ms.reactions.observe_(async (change) => {
+        if (done) return;
+        if (change.type != "add") return;
+        const reaction = change.name;
+        let type = reactionMap[reaction];
+        if (!type) return; // not a valid reaction anyway;
+
+        const userId = change.newValue.values().next().value;
+        // check permissions:
+        const server = this.client.servers.get(ms.channel.server_id);
+        const member = await server.fetchMember(userId);
+        if (!member.hasPermission(server, "ManageServer")) return;
+
+        done = true;
+        ms.edit({ content: "Marked as " + type + "!" });
+
+        if (type == "dismissed") return;
+
+        console.log("change");
+
+        this.classifier.addDocument(msg.content, type);
+      });
     });
     this.checkQueue.unshift({
       msg: msg.url,
